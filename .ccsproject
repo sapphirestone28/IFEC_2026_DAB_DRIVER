@@ -13,6 +13,6 @@
 	<templateProperties value="id=empty_driverlib_project.projectspec.empty_driverlib_project"/>
 	<origin value="C:\ti\c2000\C2000Ware_6_00_01_00\driverlib\f280013x\examples\empty_projects\CCS\empty_driverlib_project.projectspec"/>
 	<filesToOpen value=""/>
-	<connection value="common/targetdb/connections/TIXDS110_Connection.xml"/>
+	<connection value="common/targetdb/connections/TIXDS100v3_Dot7_Connection.xml"/>
 	<isTargetManual value="false"/>
 </projectOptions>

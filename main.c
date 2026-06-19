@@ -51,36 +51,62 @@
 #include "device.h"
 #include "board.h"
 #include "c2000ware_libraries.h"
+#include "dab_hal.h"
+#include "dab_scaling.h"
+#include "dab_filter.h"
 
-// variable for the epwm
-volatile float target_phase_shift_pu = 0.25f;
-volatile uint16_t phase_ticks = 0;
+// Tell main.c that dab_meas exists somewhere else (in dab_scaling.c)
+extern DAB_Measurements_t dab_meas;
 
-// variable for the ADC
-volatile uint16_t V_bus_raw = 0;
-volatile uint16_t V_bat_raw = 0;
 
-volatile uint16_t I_bus_raw = 0;
-volatile uint16_t I_bat_raw = 0;
+DAB_HAL_RawSensors_t dab_sensors;
+
+
+// variable to measeure ISR timings
+volatile uint32_t isr_start_time = 0;
+volatile uint32_t isr_end_time = 0;
+volatile uint32_t isr_total_cycles = 0;
+
+
+// Variables for the live debugger phase test
+volatile float target_phase_shift_pu = 0.0f; // -0.25f to +0.25f
 
 __interrupt void DAB_Fast_ISR(void)
 {
-    // read the voltage measurements from the ADC1
-    V_bat_raw = ADC_readResult(myADC1_BASE, ADC_SOC_NUMBER0);
-    V_bus_raw = ADC_readResult(myADC1_BASE, ADC_SOC_NUMBER1);
+    isr_start_time = CPUTimer_getTimerCount(myCPUTIMER0_BASE);
+    
+    // 1. Read the raw ADC sensor values into the DAB_HAL_RawSensors_t structure
+    DAB_HAL_readSensors(&dab_sensors);
 
-    // read the current measurements from the ADC2
-    I_bus_raw = ADC_readPPBResult(myADC2_BASE, ADC_PPB_NUMBER1);
-    I_bat_raw = ADC_readPPBResult(myADC2_BASE, ADC_PPB_NUMBER2);
+    // Filter the values of RAW voltage 
+    float smooth_V_bus_raw = DAB_Run_Voltage_Filter(&filt_V_bus, dab_sensors.V_bus_raw);
+    float smooth_V_bat_raw = DAB_Run_Voltage_Filter(&filt_V_bat, dab_sensors.V_bat_raw);
+
+    // scaling all the values and calculating the per unit values for the control loop
+    DAB_Scale_Sensors(smooth_V_bus_raw, smooth_V_bat_raw, &dab_sensors, &dab_meas);
+
+    // Run the fast IIR filters for currents to reduce noise with minimal delay
+    dab_meas.I_bus_pu = DAB_Run_Fast_IIR(&filt_I_bus, dab_meas.I_bus_pu);
+    dab_meas.I_bat_pu = DAB_Run_Fast_IIR(&filt_I_bat, dab_meas.I_bat_pu);
+
+
+    if (ADC_getInterruptOverflowStatus(myADC1_BASE, ADC_INT_NUMBER1))
+    {
+        ADC_clearInterruptOverflowStatus(myADC1_BASE, ADC_INT_NUMBER1);
+        ADC_clearInterruptStatus(myADC1_BASE, ADC_INT_NUMBER1);
+    }
 
     // clearing interuupt flags
     ADC_clearInterruptStatus(myADC1_BASE, ADC_INT_NUMBER1);
     Interrupt_clearACKGroup(INTERRUPT_ACK_GROUP1);
+
+    isr_end_time = CPUTimer_getTimerCount(myCPUTIMER0_BASE);
+    isr_total_cycles = isr_start_time - isr_end_time;
 }
 
 void delay_loop(void)
 {
-    DEVICE_DELAY_US(500000);
+    DEVICE_DELAY_US(100000);
 }
 //
 // Main
@@ -119,6 +145,10 @@ void main(void)
     //
     C2000Ware_libraries_init();
 
+    DAB_HAL_Init();
+    DAB_Filter_Init();
+
+
     //
     // Enable Global Interrupt (INTM) and real time interrupt (DBGM)
     //
@@ -128,29 +158,20 @@ void main(void)
     while (1)
     {
 
-        // clamp the target phase shift to be within -1.0 to 1.0 pu
-        if (target_phase_shift_pu > 1.0f)
-            target_phase_shift_pu = 1.0f;
-        if (target_phase_shift_pu < -1.0f)
-            target_phase_shift_pu = -1.0f;
+
 
         // calculate the number of timer ticks corresponding to the target phase shift
         float abs_phase = target_phase_shift_pu;
-        if (abs_phase < 0)
-            abs_phase = -abs_phase;
-        phase_ticks = (uint16_t)(abs_phase * 240);
+        int direction = DAB_DIR_CHARGE;
+
+        if (target_phase_shift_pu < 0.0f)
+        {
+            direction = DAB_DIR_DISCHARGE;
+            abs_phase = -target_phase_shift_pu; // make it positive for tick calculation
+        }
 
         // set the count direction based on the sign of the target phase shift
-        EPWM_SyncCountMode count_dir = EPWM_COUNT_MODE_UP_AFTER_SYNC;
-        if (target_phase_shift_pu < 0.0f)
-            count_dir = EPWM_COUNT_MODE_DOWN_AFTER_SYNC;
-
-        // update the EPWM sync settings to apply the new phase shift
-        EPWM_setPhaseShift(myEPWM3_BASE, phase_ticks);
-        EPWM_setCountModeAfterSync(myEPWM3_BASE, count_dir);
-
-        EPWM_setPhaseShift(myEPWM4_BASE, phase_ticks);
-        EPWM_setCountModeAfterSync(myEPWM4_BASE, count_dir);
+        DAB_HAL_updatePhaseShift(abs_phase, direction);
 
         GPIO_togglePin(LED_DEBUG);
 
