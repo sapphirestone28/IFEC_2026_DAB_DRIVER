@@ -1,185 +1,125 @@
 // #############################################################################
-//
-//  FILE:   empty_driverlib_main.c
-//
-//! \addtogroup driver_example_list
-//! <h1>Empty Project Example</h1>
-//!
-//! This example is an empty project setup for Driverlib development.
-//!
-//
-// #############################################################################
-//
-//
-// $Copyright:
-// Copyright (C) 2025 Texas Instruments Incorporated - http://www.ti.com/
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions
-// are met:
-//
-//   Redistributions of source code must retain the above copyright
-//   notice, this list of conditions and the following disclaimer.
-//
-//   Redistributions in binary form must reproduce the above copyright
-//   notice, this list of conditions and the following disclaimer in the
-//   documentation and/or other materials provided with the
-//   distribution.
-//
-//   Neither the name of Texas Instruments Incorporated nor the names of
-//   its contributors may be used to endorse or promote products derived
-//   from this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-// $
+//  FILE:   main.c
+//  TITLE:  DAB Open-Loop Hardware Test Bench
 // #############################################################################
 
-//
-// Included Files
-//
 #include "driverlib.h"
 #include "device.h"
 #include "board.h"
 #include "c2000ware_libraries.h"
+
 #include "dab_hal.h"
 #include "dab_scaling.h"
 #include "dab_filter.h"
 
-// Tell main.c that dab_meas exists somewhere else (in dab_scaling.c)
+// ---------------------------------------------------------
+// GLOBALS
+// ---------------------------------------------------------
+DAB_HAL_RawSensors_t dab_sensors;
 extern DAB_Measurements_t dab_meas;
 
-
-DAB_HAL_RawSensors_t dab_sensors;
-
-
-// variable to measeure ISR timings
 volatile uint32_t isr_start_time = 0;
-volatile uint32_t isr_end_time = 0;
+volatile uint32_t isr_end_time   = 0;
 volatile uint32_t isr_total_cycles = 0;
 
+// ---------------------------------------------------------
+// HARDWARE TEST VARIABLES (Edit these in CCS Expressions!)
+// ---------------------------------------------------------
+volatile float test_phase_pu = 0.0f;        // Change this between 0.0 and 0.25!
+volatile int   test_direction = 1;          // 1 = Charge (G2V), -1 = Discharge (V2G)
+volatile int   clear_hardware_faults = 0;   // Set to 1 to clear trips
+volatile int   enable_gate_drivers = 1;     // Set to 1 to physically turn on the GD_EN pins
 
-// Variables for the live debugger phase test
-volatile float target_phase_shift_pu = 0.0f; // -0.25f to +0.25f
-
+// ---------------------------------------------------------
+// THE 50 kHz FAST ISR
+// ---------------------------------------------------------
 __interrupt void DAB_Fast_ISR(void)
 {
     isr_start_time = CPUTimer_getTimerCount(myCPUTIMER0_BASE);
-    
-    // 1. Read the raw ADC sensor values into the DAB_HAL_RawSensors_t structure
+
+    // SOFTWARE "AND" GUARD: Wait for ADCA to finish
+    uint16_t guard = 0;
+    while (ADC_getInterruptStatus(myADC1_BASE, ADC_INT_NUMBER1) == false) {
+        if (++guard > 1000U) break;
+    }
+
+    // 1. Read Raw Sensors
     DAB_HAL_readSensors(&dab_sensors);
 
-    // Filter the values of RAW voltage 
+    // 2. Filter Voltages
     float smooth_V_bus_raw = DAB_Run_Voltage_Filter(&filt_V_bus, dab_sensors.V_bus_raw);
     float smooth_V_bat_raw = DAB_Run_Voltage_Filter(&filt_V_bat, dab_sensors.V_bat_raw);
 
-    // scaling all the values and calculating the per unit values for the control loop
+    // 3. Scale and populate dab_meas
     DAB_Scale_Sensors(smooth_V_bus_raw, smooth_V_bat_raw, &dab_sensors, &dab_meas);
 
-    // Run the fast IIR filters for currents to reduce noise with minimal delay
-    dab_meas.I_bus_pu = DAB_Run_Fast_IIR(&filt_I_bus, dab_meas.I_bus_pu);
-    dab_meas.I_bat_pu = DAB_Run_Fast_IIR(&filt_I_bat, dab_meas.I_bat_pu);
+    // 4. Filter Currents
+    dab_meas.I_bus_A  = DAB_Run_Fast_IIR(&filt_I_bus, dab_meas.I_bus_A);
+    dab_meas.I_bat_A  = DAB_Run_Fast_IIR(&filt_I_bat, dab_meas.I_bat_A);
 
+    // Refresh PUs based on filtered current
+    dab_meas.I_bus_pu = dab_meas.I_bus_A / I_BASE;
+    dab_meas.I_bat_pu = dab_meas.I_bat_A / I_BASE;
+    dab_meas.P_bat_W  = dab_meas.V_bat_V * dab_meas.I_bat_A;
+    dab_meas.P_bat_pu = dab_meas.P_bat_W / P_BASE;
 
-    if (ADC_getInterruptOverflowStatus(myADC1_BASE, ADC_INT_NUMBER1))
-    {
-        ADC_clearInterruptOverflowStatus(myADC1_BASE, ADC_INT_NUMBER1);
-        ADC_clearInterruptStatus(myADC1_BASE, ADC_INT_NUMBER1);
-    }
+    // 5. OPEN-LOOP TEST: Bypass control math, apply test variables directly!
+    // Safety clamp just in case you type a crazy number in the debugger
+    if(test_phase_pu > 0.25f) test_phase_pu = 0.25f;
+    if(test_phase_pu < 0.0f)  test_phase_pu = 0.0f;
 
-    // clearing interuupt flags
+    DAB_HAL_updatePhaseShift(test_phase_pu, test_direction);
+
+    // 6. Clear Interrupts (NOTE: Fix applied - myADC2_BASE used!)
     ADC_clearInterruptStatus(myADC1_BASE, ADC_INT_NUMBER1);
+    ADC_clearInterruptStatus(myADC2_BASE, ADC_INT_NUMBER1);
     Interrupt_clearACKGroup(INTERRUPT_ACK_GROUP1);
 
     isr_end_time = CPUTimer_getTimerCount(myCPUTIMER0_BASE);
     isr_total_cycles = isr_start_time - isr_end_time;
 }
 
-void delay_loop(void)
-{
-    DEVICE_DELAY_US(100000);
-}
-//
-// Main
-//
+// ---------------------------------------------------------
+// MAIN
+// ---------------------------------------------------------
 void main(void)
 {
 
-    //
-    // Initialize device clock and peripherals
-    //
+
+
     Device_init();
-
-    //
-    // Disable pin locks and enable internal pull-ups.
-    //
     Device_initGPIO();
-
-    //
-    // Initialize PIE and clear PIE registers. Disables CPU interrupts.
-    //
     Interrupt_initModule();
-
-    //
-    // Initialize the PIE vector table with pointers to the shell Interrupt
-    // Service Routines (ISR).
-    //
     Interrupt_initVectorTable();
-
-    //
-    // PinMux and Peripheral Initialization
-    //
     Board_init();
-
-    //
-    // C2000Ware Library initialization
-    //
     C2000Ware_libraries_init();
 
     DAB_HAL_Init();
     DAB_Filter_Init();
 
+    // FIX: Registering to ADCC (myADC2_1) because it triggers the CPU!
+    Interrupt_register(INT_myADC1_1, &DAB_Fast_ISR);
 
-    //
-    // Enable Global Interrupt (INTM) and real time interrupt (DBGM)
-    //
     EINT;
     ERTM;
 
     while (1)
     {
-
-
-
-        // calculate the number of timer ticks corresponding to the target phase shift
-        float abs_phase = target_phase_shift_pu;
-        int direction = DAB_DIR_CHARGE;
-
-        if (target_phase_shift_pu < 0.0f)
+        // 1. Fault Management
+        if (clear_hardware_faults == 1)
         {
-            direction = DAB_DIR_DISCHARGE;
-            abs_phase = -target_phase_shift_pu; // make it positive for tick calculation
+            DAB_HAL_clearHardwareTrips();
+            clear_hardware_faults = 0;
         }
 
-        // set the count direction based on the sign of the target phase shift
-        DAB_HAL_updatePhaseShift(abs_phase, direction);
+        // 2. Gate Driver Management
+        if (enable_gate_drivers == 1) {
+            DAB_HAL_enablePWM();
+        } else {
+            DAB_HAL_disablePWM();
+        }
 
         GPIO_togglePin(LED_DEBUG);
-
-        // F. Wait 100ms
-        delay_loop();
+        DEVICE_DELAY_US(100000);
     }
 }
-
-//
-// End of File
-//
