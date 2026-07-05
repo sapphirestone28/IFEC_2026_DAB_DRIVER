@@ -61,12 +61,13 @@ void DAB_HAL_updatePhaseShift(float phase_pu, int direction)
     }
 
     // 4. WRITE TO SECONDARY BRIDGE MODULES ONLY.
-    //    EPWM1/EPWM2 shift; EPWM4 (master), EPWM6, EPWM7 (primary) stay at 0.
-    EPWM_setPhaseShift(myEPWM1_BASE, phase_ticks);
-    EPWM_setCountModeAfterSync(myEPWM1_BASE, count_dir);
+        // Based on the final schematic: Secondary Bridge is EPWM3 and EPWM4.
+        // Primary Bridge (EPWM1 and EPWM2) remains locked at Phase 0.
+    EPWM_setPhaseShift(myEPWM3_BASE, phase_ticks);
+    EPWM_setCountModeAfterSync(myEPWM3_BASE, count_dir);
 
-    EPWM_setPhaseShift(myEPWM2_BASE, phase_ticks);
-    EPWM_setCountModeAfterSync(myEPWM2_BASE, count_dir);
+    EPWM_setPhaseShift(myEPWM4_BASE, phase_ticks);
+    EPWM_setCountModeAfterSync(myEPWM4_BASE, count_dir);
 }
 
 void DAB_HAL_disablePWM(void)
@@ -93,7 +94,7 @@ void DAB_HAL_clearHardwareTrips(void)
 
     EPWM_clearTripZoneFlag(myEPWM1_BASE, clear_flags);
     EPWM_clearTripZoneFlag(myEPWM2_BASE, clear_flags);
+    EPWM_clearTripZoneFlag(myEPWM3_BASE, clear_flags);
     EPWM_clearTripZoneFlag(myEPWM4_BASE, clear_flags);
-    EPWM_clearTripZoneFlag(myEPWM6_BASE, clear_flags);
-    EPWM_clearTripZoneFlag(myEPWM7_BASE, clear_flags);
+
 }

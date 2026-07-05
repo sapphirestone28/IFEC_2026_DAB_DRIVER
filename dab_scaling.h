@@ -3,6 +3,8 @@
  *
  *  Created on: 18-Jun-2026
  *      Author: Kaus
+ *
+ * 2026/07/01 - optimization by changing all the division into multiplications
  */
 
 #ifndef DAB_SCALING_H_
@@ -13,30 +15,42 @@
 #include "board.h"
 #include "dab_hal.h"
 
-#define V_BUS_BASE 400.0f // Base voltage for per unit calculations
-#define V_BAT_BASE 400.0f // Base voltage for per unit calculations
-#define I_BASE     10.0f  // Base current for per unit calculations
-#define P_BASE   1000.0f  // Base power for per unit calculations (1 kW)
+// ---------------------------------------------------------
+// INVERTED PER-UNIT BASES (Multiplication is 40x faster than Division)
+// ---------------------------------------------------------
+#define V_BUS_BASE_INV   0.0025f    // 1.0f / 400.0f
+#define V_BAT_BASE_INV   0.0025f    // 1.0f / 400.0f
+#define I_BASE_INV       0.1f       // 1.0f / 10.0f
+#define P_BASE_INV       0.001f     // 1.0f / 1000.0f
 
 // Calibration constants for ADC conversion
 #define ADC_TO_PIN_VOLTS (3.3f / 4096.0f) // 12-bit ADC with 3.3V reference
 
 // Voltage Calibration
-#define V_GAIN           445.017f     // 444.44 * 1.0013
-#define V_OFFSET         0.86f        // +0.86V static offset
+#define V_GAIN_BAT           174.587f
+#define V_OFFSET_BAT         8.0f
+#define V_GAIN_BUS           174.587f
+#define V_OFFSET_BUS         7.0f
 
-// Current Calibrations
-#define I_SENSITIVITY    0.047316f    // 0.0476 / 1.006
-#define I_OFFSET         0.206f       // +0.206A static offset
+// ---------------------------------------------------------
+// INVERTED CURRENT SENSITIVITIES (1.0f / Sensitivity)
+// ---------------------------------------------------------
+// Original I_BUS: 0.0331 V/A -> Inverse is 30.21148 A/V
+#define I_BUS_SENSITIVITY_INV   20.41f
 
+#define I_BAT_SENSITIVITY_INV   19.54f
+
+// Fine-tuning software offsets
+#define I_BUS_OFFSET         0.0f
+#define I_BAT_OFFSET         0.0f
 
 typedef struct
 {
     // Physical values
     float V_bus_V;
     float V_bat_V;
-    float I_bus_A;   // Corrected suffix to _A
-    float I_bat_A;   // Corrected suffix to _A
+    float I_bus_A;
+    float I_bat_A;
     float P_bat_W;
 
     // Per unit values for PI Control and math 
@@ -44,10 +58,10 @@ typedef struct
     float V_bat_pu;
     float I_bus_pu;
     float I_bat_pu;
-    float P_bat_pu;  // Added for Constant Power mode
+    float P_bat_pu;
 } DAB_Measurements_t;
 
-// Function Prototype updated to accept the pre-filtered raw voltages
+// Function Prototype
 void DAB_Scale_Sensors(float smooth_V_bus_raw, float smooth_V_bat_raw, DAB_HAL_RawSensors_t* raw_sensors, DAB_Measurements_t* measurements);
 
 #endif /* DAB_SCALING_H_ */

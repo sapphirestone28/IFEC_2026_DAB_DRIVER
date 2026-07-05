@@ -34,10 +34,10 @@ void DAB_Filter_Init(void)
     }
 
     // Initialize Fast Current Filters (Alpha = 0.20 to 0.40)
-    filt_I_bus.alpha = 0.30f;
+    filt_I_bus.alpha = 0.385f;
     filt_I_bus.prev_out = 0.0f;
     
-    filt_I_bat.alpha = 0.30f;
+    filt_I_bat.alpha = 0.385f;
     filt_I_bat.prev_out = 0.0f;
 }
 
