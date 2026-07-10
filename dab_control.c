@@ -47,11 +47,19 @@ void DAB_Control_Init(void)
     float Ki_cur = 0.0022f;
     float Kp_vol = 0.110f;
     float Ki_vol = 0.0110f;
+
+#elif SYSTEM_TEST_VOLTAGE == 225
+    float Kp_cur = 0.018f;
+    float Ki_cur = 0.0018f;
+    float Kp_vol = 0.12f;
+    float Ki_vol = 0.0090f;
+
 #elif SYSTEM_TEST_VOLTAGE == 250
     float Kp_cur = 0.018f;
     float Ki_cur = 0.0018f;
     float Kp_vol = 0.090f;
     float Ki_vol = 0.0090f;
+
 #elif SYSTEM_TEST_VOLTAGE == 300
     float Kp_cur = 0.015f;
     float Ki_cur = 0.0015f;

@@ -1,3 +1,4 @@
+"./dab_control.obj"
 "./dab_filter.obj"
 "./dab_hal.obj"
 "./dab_scaling.obj"

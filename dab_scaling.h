@@ -28,9 +28,17 @@
 
 // Voltage Calibration
 #define V_GAIN_BAT           174.587f
-#define V_OFFSET_BAT         8.0f
+#define V_OFFSET_BAT         1.0f
 #define V_GAIN_BUS           174.587f
-#define V_OFFSET_BUS         7.0f
+#define V_OFFSET_BUS         -1.0f
+
+
+// Voltage Calibration
+#define V_GAIN_BAT_DIRECT     0.200009f
+#define V_OFFSET_BAT_DIRECT   59.f
+
+#define V_GAIN_BUS_DIRECT        0.5844f
+#define V_OFFSET_BUS_DIRECT     -508.0f
 
 // ---------------------------------------------------------
 // INVERTED CURRENT SENSITIVITIES (1.0f / Sensitivity)
@@ -41,8 +49,8 @@
 #define I_BAT_SENSITIVITY_INV   19.54f
 
 // Fine-tuning software offsets
-#define I_BUS_OFFSET         0.0f
-#define I_BAT_OFFSET         0.0f
+#define I_BUS_OFFSET         -0.040f
+#define I_BAT_OFFSET         -0.090f
 
 typedef struct
 {

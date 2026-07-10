@@ -21,11 +21,16 @@ void DAB_Scale_Sensors(float smooth_V_bus_raw, float smooth_V_bat_raw, DAB_HAL_R
     // 1. VOLTAGE SCALING
     // Formula: V_actual = (V_pin * V_GAIN) + V_OFFSET
     // -------------------------------------------------------------
-    float V_bus_pin = smooth_V_bus_raw * ADC_TO_PIN_VOLTS;
-    measurements->V_bus_V = (V_bus_pin * V_GAIN_BUS) + V_OFFSET_BUS;
+    //float V_bus_pin = smooth_V_bus_raw * ADC_TO_PIN_VOLTS;
+    //measurements->V_bus_V = (V_bus_pin * V_GAIN_BUS) + V_OFFSET_BUS;
 
-    float V_bat_pin = smooth_V_bat_raw * ADC_TO_PIN_VOLTS;
-    measurements->V_bat_V = (V_bat_pin * V_GAIN_BAT) + V_OFFSET_BAT;
+    measurements->V_bus_V = (smooth_V_bus_raw * V_GAIN_BUS_DIRECT) + V_OFFSET_BUS_DIRECT;
+
+
+//    float V_bat_pin = smooth_V_bat_raw * ADC_TO_PIN_VOLTS;
+//    measurements->V_bat_V = (V_bat_pin * V_GAIN_BAT) + V_OFFSET_BAT;
+
+    measurements->V_bat_V = (smooth_V_bat_raw * V_GAIN_BAT_DIRECT) + V_OFFSET_BAT_DIRECT;
 
     // -------------------------------------------------------------
     // 2. CURRENT SCALING (Replaced Division with Multiplication!)

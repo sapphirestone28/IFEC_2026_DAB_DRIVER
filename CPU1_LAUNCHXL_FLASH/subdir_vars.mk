@@ -15,6 +15,7 @@ LIB_SRCS += \
 C:/ti/c2000/C2000Ware_6_00_01_00/driverlib/f280013x/driverlib/ccs/Debug/driverlib.lib 
 
 C_SRCS += \
+../dab_control.c \
 ../dab_filter.c \
 ../dab_hal.c \
 ../dab_scaling.c \
@@ -24,12 +25,14 @@ GEN_MISC_DIRS += \
 ./syscfg 
 
 C_DEPS += \
+./dab_control.d \
 ./dab_filter.d \
 ./dab_hal.d \
 ./dab_scaling.d \
 ./main.d 
 
 OBJS += \
+./dab_control.obj \
 ./dab_filter.obj \
 ./dab_hal.obj \
 ./dab_scaling.obj \
@@ -42,6 +45,7 @@ GEN_MISC_DIRS__QUOTED += \
 "syscfg" 
 
 OBJS__QUOTED += \
+"dab_control.obj" \
 "dab_filter.obj" \
 "dab_hal.obj" \
 "dab_scaling.obj" \
@@ -51,6 +55,7 @@ GEN_MISC_FILES__QUOTED += \
 "syscfg\error.h" 
 
 C_DEPS__QUOTED += \
+"dab_control.d" \
 "dab_filter.d" \
 "dab_hal.d" \
 "dab_scaling.d" \
@@ -60,6 +65,7 @@ SYSCFG_SRCS__QUOTED += \
 "../c2000.syscfg" 
 
 C_SRCS__QUOTED += \
+"../dab_control.c" \
 "../dab_filter.c" \
 "../dab_hal.c" \
 "../dab_scaling.c" \
