@@ -15,7 +15,7 @@
 
 //=============================================
 //change this to the 50, 100 , 150, 200 , or whatever you want
-#define SYSTEM_TEST_VOLTAGE 225
+#define SYSTEM_TEST_VOLTAGE 200
 
 
 
