@@ -19,6 +19,7 @@ C_SRCS += \
 ../dab_filter.c \
 ../dab_hal.c \
 ../dab_scaling.c \
+../dab_telemetry.c \
 ../main.c 
 
 GEN_MISC_DIRS += \
@@ -29,6 +30,7 @@ C_DEPS += \
 ./dab_filter.d \
 ./dab_hal.d \
 ./dab_scaling.d \
+./dab_telemetry.d \
 ./main.d 
 
 OBJS += \
@@ -36,6 +38,7 @@ OBJS += \
 ./dab_filter.obj \
 ./dab_hal.obj \
 ./dab_scaling.obj \
+./dab_telemetry.obj \
 ./main.obj 
 
 GEN_MISC_FILES += \
@@ -49,6 +52,7 @@ OBJS__QUOTED += \
 "dab_filter.obj" \
 "dab_hal.obj" \
 "dab_scaling.obj" \
+"dab_telemetry.obj" \
 "main.obj" 
 
 GEN_MISC_FILES__QUOTED += \
@@ -59,6 +63,7 @@ C_DEPS__QUOTED += \
 "dab_filter.d" \
 "dab_hal.d" \
 "dab_scaling.d" \
+"dab_telemetry.d" \
 "main.d" 
 
 SYSCFG_SRCS__QUOTED += \
@@ -69,6 +74,7 @@ C_SRCS__QUOTED += \
 "../dab_filter.c" \
 "../dab_hal.c" \
 "../dab_scaling.c" \
+"../dab_telemetry.c" \
 "../main.c" 
 
 

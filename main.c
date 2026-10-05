@@ -80,10 +80,10 @@ __interrupt void DAB_Fast_ISR(void)
     // ---> OPEN LOOP (Manual Override): Uncomment below block to run Open-Loop
 
     // Safety clamp user input BEFORE math
-    if (test_phase > 35.0f)
-        test_phase = 35.0f;
-    if (test_phase < 35.0f)
-        test_phase = 35.0f;
+    if (test_phase > 25.0f)
+        test_phase = 25.0f;
+    if (test_phase < 25.0f)
+        test_phase = 25.0f;
 
     // Convert Degrees to PU (1 / 360 = 0.0027777778f)
     active_phase_pu = test_phase * 0.0027777778f;
@@ -97,7 +97,7 @@ __interrupt void DAB_Fast_ISR(void)
     // 6. Send commands to Hardware
     DAB_HAL_updatePhaseShift(active_phase_pu, active_direction);
 
-    // 7. Clear Interrupts
+    // 7. Clear InterruptsaGGGGGGGGGGGGN
     ADC_clearInterruptStatus(myADC1_BASE, ADC_INT_NUMBER1);
     ADC_clearInterruptStatus(myADC2_BASE, ADC_INT_NUMBER1);
 
@@ -144,7 +144,7 @@ void main(void)
     for (boot_timer = 0; boot_timer < 50; boot_timer++)
     {
         // Toggle LEDs rapidly so user knows board is alive and waiting
-        GPIO_togglePin(LED_DEBUG_2);
+        GPIO_togglePin(LED_DEBUG);
         delay_loop(); // 50 * 100ms = 5000ms (5 seconds)
     }
 
@@ -186,10 +186,10 @@ void main(void)
                 {
                     // NORMAL OPERATION (No Faults)
                     // Blink LED_DEBUG as a heartbeat to show the background loop is alive
-                    GPIO_togglePin(LED_DEBUG);
+                    GPIO_togglePin(LED_DEBUG_2);
 
-                    // Ensure the Voltage fault LED stays off
-                    GPIO_writePin(LED_DEBUG_2, 0);
+                    // Ensure the Voltage fault LED stays offs
+                    GPIO_writePin(LED_DEBUG, 0);
                 }
 
         // 2. Gate Driver Management

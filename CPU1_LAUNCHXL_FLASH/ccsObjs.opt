@@ -2,6 +2,7 @@
 "./dab_filter.obj"
 "./dab_hal.obj"
 "./dab_scaling.obj"
+"./dab_telemetry.obj"
 "./main.obj"
 "./device/device.obj"
 "./device/f280013x_codestartbranch.obj"

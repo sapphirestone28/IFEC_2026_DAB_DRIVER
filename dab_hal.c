@@ -8,7 +8,7 @@
 
 #include "dab_hal.h"
 
-#define PERIOD_TICKS      240.0f
+#define PERIOD_TICKS      600.0f
 #define FULL_CYCLE_TICKS  (2.0f * PERIOD_TICKS)   // = 480
 
 void DAB_HAL_Init(void)
